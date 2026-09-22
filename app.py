@@ -1,5 +1,6 @@
 import math
 import time
+import tempfile
 from pathlib import Path
 
 import cv2
@@ -235,9 +236,9 @@ def make_demo(seed=42, duration=18.0, fps=30, mass=18.0, friction=0.45,
     whole_pos = pos_x.copy()
 
     # Simple performance metrics.
-    whole_work = np.trapz(force_est * np.maximum(vel, 0), t)
+    whole_work = np.trapezoid(force_est * np.maximum(vel, 0), t) if hasattr(np, "trapezoid") else np.trapz(force_est * np.maximum(vel, 0), t)
     arm_force = np.minimum(force_est * 0.70 + 8 * np.sin(t) ** 2, 0.8 * force_est + 5)
-    arm_work = np.trapz(np.maximum(arm_force, 0) * arm_vel, t)
+    arm_work = np.trapezoid(np.maximum(arm_force, 0) * arm_vel, t) if hasattr(np, "trapezoid") else np.trapz(np.maximum(arm_force, 0) * arm_vel, t)
     tracking_error = np.mean(np.abs(
         (robot_com_x - robot_com_x[0]) -
         (com_x - com_x[0]) * 0.95
@@ -683,7 +684,9 @@ st.image(cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB), use_container_width=True)
 st.subheader("🎬 Generate a Local Demo Video")
 st.caption("The button creates an MP4 from the same procedural simulation data. It does not require a camera or API key.")
 
-def generate_demo_video(df, meta, out_path="/tmp/whole_body_pushing_demo.mp4"):
+def generate_demo_video(df, meta, out_path=None):
+    if out_path is None:
+        out_path = str(Path(tempfile.gettempdir()) / "whole_body_pushing_demo.mp4")
     width, height = 960, 540
     fps = 20
     writer = cv2.VideoWriter(
